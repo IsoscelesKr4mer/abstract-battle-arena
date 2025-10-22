@@ -58,68 +58,137 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock wallet connection
+  // Abstract Wallet connection
   const connectWallet = async (): Promise<void> => {
     try {
       setIsLoading(true);
       
-      // Simulate wallet connection
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const mockUser: User = {
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        username: 'BattleMaster',
-        profilePicture: '',
-        bio: 'Abstract Battle Arena Champion',
-        pvpStats: {
-          totalDuels: 0,
-          wins: 0,
-          losses: 0,
-          totalStakeWon: 0,
-          totalStakeLost: 0,
-          winStreak: 0,
-          longestWinStreak: 0,
-          favoriteMove: 'Sword',
-          lastBattleAt: undefined
-        },
-        battleHistory: [],
-        socialLinks: {
-          twitter: '',
-          discord: ''
-        },
-        settings: {
-          notifications: true,
-          publicProfile: true
-        },
-        createdAt: new Date(),
-        lastActive: new Date()
-      };
-      
-      setUser(mockUser);
-      setIsAuthenticated(true);
+      // Check if Abstract Wallet is available
+      if (typeof window !== 'undefined' && (window as any).abstract) {
+        const abstract = (window as any).abstract;
+        
+        // Request connection
+        const accounts = await abstract.request({
+          method: 'eth_requestAccounts'
+        });
+        
+        if (accounts && accounts.length > 0) {
+          const walletAddress = accounts[0];
+          
+          // Get user info from Abstract Wallet
+          const userInfo = await abstract.request({
+            method: 'abstract_getUserInfo'
+          });
+          
+          // Create user object with AGW data
+          const agwUser: User = {
+            walletAddress: walletAddress.toLowerCase(),
+            username: userInfo?.username || `AGW_${walletAddress.slice(0, 8)}`,
+            profilePicture: userInfo?.avatar || '',
+            bio: userInfo?.bio || 'Abstract Battle Arena Warrior',
+            pvpStats: {
+              totalDuels: 0,
+              wins: 0,
+              losses: 0,
+              totalStakeWon: 0,
+              totalStakeLost: 0,
+              winStreak: 0,
+              longestWinStreak: 0,
+              favoriteMove: 'Sword',
+              lastBattleAt: undefined
+            },
+            battleHistory: [],
+            socialLinks: {
+              twitter: userInfo?.twitter || '',
+              discord: userInfo?.discord || ''
+            },
+            settings: {
+              notifications: true,
+              publicProfile: true
+            },
+            createdAt: new Date(),
+            lastActive: new Date()
+          };
+          
+          setUser(agwUser);
+          setIsAuthenticated(true);
+          
+          // Store AGW connection info
+          localStorage.setItem('agwConnected', 'true');
+          localStorage.setItem('agwAddress', walletAddress);
+          
+        } else {
+          throw new Error('No accounts found in Abstract Wallet');
+        }
+      } else {
+        throw new Error('Abstract Wallet not detected. Please install Abstract Wallet extension.');
+      }
       
     } catch (error) {
-      console.error('Wallet connection failed:', error);
+      console.error('Abstract Wallet connection failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Mock authentication
+  // AGW signature authentication
   const authenticate = async (): Promise<void> => {
     try {
       setIsLoading(true);
       
-      // Simulate authentication process
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In a real implementation, this would verify wallet signature
-      console.log('Authentication successful (mock)');
+      if (typeof window !== 'undefined' && (window as any).abstract && user) {
+        const abstract = (window as any).abstract;
+        
+        // Create authentication message
+        const message = `Welcome to Abstract Battle Arena!
+        
+Sign this message to authenticate with your Abstract Wallet.
+
+Wallet: ${user.walletAddress}
+Timestamp: ${Date.now()}`;
+        
+        // Request signature from AGW
+        const signature = await abstract.request({
+          method: 'personal_sign',
+          params: [message, user.walletAddress]
+        });
+        
+        // Authenticate with backend using signature
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/authenticate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: user.walletAddress,
+            signature: signature,
+            message: message
+          })
+        });
+        
+        const authData = await response.json();
+        
+        if (authData.success) {
+          // Store authentication token
+          localStorage.setItem('battleArenaToken', authData.data.token);
+          localStorage.setItem('battleArenaUser', JSON.stringify(authData.data.user));
+          
+          // Update user with server data
+          setUser(authData.data.user);
+          setIsAuthenticated(true);
+          
+          console.log('AGW Authentication successful');
+        } else {
+          throw new Error(authData.message || 'Authentication failed');
+        }
+        
+      } else {
+        throw new Error('Abstract Wallet not connected');
+      }
       
     } catch (error) {
-      console.error('Authentication failed:', error);
+      console.error('AGW Authentication failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -130,7 +199,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const disconnect = (): void => {
     setUser(null);
     setIsAuthenticated(false);
-    console.log('Wallet disconnected');
+    
+    // Clear all stored data
+    localStorage.removeItem('battleArenaToken');
+    localStorage.removeItem('battleArenaUser');
+    localStorage.removeItem('agwConnected');
+    localStorage.removeItem('agwAddress');
+    
+    console.log('Abstract Wallet disconnected');
   };
 
   // Update user data
@@ -144,12 +220,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        // In a real implementation, check for stored session/token
         const storedUser = localStorage.getItem('battleArenaUser');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-          setIsAuthenticated(true);
+        const storedToken = localStorage.getItem('battleArenaToken');
+        const agwConnected = localStorage.getItem('agwConnected');
+        
+        if (storedUser && storedToken && agwConnected) {
+          // Verify AGW is still connected
+          if (typeof window !== 'undefined' && (window as any).abstract) {
+            try {
+              const abstract = (window as any).abstract;
+              const accounts = await abstract.request({
+                method: 'eth_accounts'
+              });
+              
+              if (accounts && accounts.length > 0) {
+                const userData = JSON.parse(storedUser);
+                setUser(userData);
+                setIsAuthenticated(true);
+              } else {
+                // AGW disconnected, clear local storage
+                localStorage.removeItem('battleArenaToken');
+                localStorage.removeItem('battleArenaUser');
+                localStorage.removeItem('agwConnected');
+                localStorage.removeItem('agwAddress');
+              }
+            } catch (error) {
+              console.error('Error verifying AGW connection:', error);
+              // Clear invalid session
+              localStorage.removeItem('battleArenaToken');
+              localStorage.removeItem('battleArenaUser');
+              localStorage.removeItem('agwConnected');
+              localStorage.removeItem('agwAddress');
+            }
+          }
         }
       } catch (error) {
         console.error('Error checking existing session:', error);

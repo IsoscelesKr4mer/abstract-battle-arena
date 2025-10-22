@@ -3,12 +3,28 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Mock wallet verification - in production, this would verify wallet signatures
+// Abstract Wallet signature verification
+const { ethers } = require('ethers');
+
 const verifyWalletSignature = async (address, signature, message) => {
-  // This is a placeholder - real implementation would verify the signature
-  // using ethers.js or web3.js to ensure the message was signed by the wallet
-  console.log('Verifying wallet signature for:', address);
-  return true;
+  try {
+    // Verify the signature using ethers.js
+    const recoveredAddress = ethers.utils.verifyMessage(message, signature);
+    
+    // Check if the recovered address matches the provided address
+    const isValid = recoveredAddress.toLowerCase() === address.toLowerCase();
+    
+    console.log('Signature verification:', {
+      provided: address.toLowerCase(),
+      recovered: recoveredAddress.toLowerCase(),
+      valid: isValid
+    });
+    
+    return isValid;
+  } catch (error) {
+    console.error('Signature verification failed:', error);
+    return false;
+  }
 };
 
 // Authenticate user with wallet signature
@@ -37,10 +53,11 @@ router.post('/authenticate', async (req, res) => {
     let user = await User.findOne({ walletAddress: walletAddress.toLowerCase() });
     
     if (!user) {
-      // Create new user
+      // Create new AGW user
       user = new User({
         walletAddress: walletAddress.toLowerCase(),
-        username: `Player_${walletAddress.slice(0, 8)}`,
+        username: `AGW_${walletAddress.slice(0, 8)}`,
+        bio: 'Abstract Battle Arena Warrior',
         pvpStats: {
           totalDuels: 0,
           wins: 0,
@@ -52,7 +69,10 @@ router.post('/authenticate', async (req, res) => {
           favoriteMove: 'Sword'
         },
         battleHistory: [],
-        socialLinks: {},
+        socialLinks: {
+          twitter: '',
+          discord: ''
+        },
         settings: {
           notifications: true,
           publicProfile: true
@@ -60,7 +80,7 @@ router.post('/authenticate', async (req, res) => {
       });
       
       await user.save();
-      console.log('New user created:', user.walletAddress);
+      console.log('New AGW user created:', user.walletAddress);
     } else {
       // Update last active
       user.lastActive = new Date();

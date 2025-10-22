@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sword, Shield, Zap, Trophy, Users, Clock, Target } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import WalletConnection from './WalletConnection';
 
 interface Duel {
   id: number;
@@ -22,6 +24,7 @@ interface Move {
 }
 
 const AbstractPvPCombat: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
   const [activeDuels, setActiveDuels] = useState<Duel[]>([]);
   const [selectedDuel, setSelectedDuel] = useState<Duel | null>(null);
   const [stakeAmount, setStakeAmount] = useState('0.01');
@@ -162,6 +165,30 @@ const AbstractPvPCombat: React.FC = () => {
     ];
     setActiveDuels(mockDuels);
   }, []);
+
+  // Show wallet connection if not authenticated
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div className="container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-white mb-2">
+              Abstract Battle Arena
+            </h1>
+            <p className="text-xl text-gray-300">
+              Gigaverse-inspired 1v1 battles with real stakes
+            </p>
+          </div>
+          
+          {/* Wallet Connection */}
+          <div className="max-w-md mx-auto">
+            <WalletConnection />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
