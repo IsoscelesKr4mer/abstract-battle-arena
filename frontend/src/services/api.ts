@@ -102,51 +102,68 @@ export const pvpAPI = {
 
 // User API functions
 export const userAPI = {
-  // Get user profile
-  getProfile: async (walletAddress: string) => {
-    const response = await api.get(`/users/${walletAddress}`);
+  // Get public user profile
+  getPublicProfile: async (walletAddress: string) => {
+    const response = await api.get(`/users/profile/${walletAddress}`);
     return response.data;
   },
 
-  // Update user profile
-  updateProfile: async (walletAddress: string, profileData: any) => {
-    const response = await api.put(`/users/${walletAddress}`, profileData);
+  // Get user statistics (requires authentication)
+  getStats: async () => {
+    const response = await api.get('/users/stats');
     return response.data;
   },
 
-  // Get user statistics
-  getStats: async (walletAddress: string) => {
-    const response = await api.get(`/users/${walletAddress}/stats`);
+  // Get user battle history (requires authentication)
+  getBattleHistory: async (limit?: number, offset?: number) => {
+    const response = await api.get('/users/battle-history', {
+      params: { limit, offset }
+    });
     return response.data;
   },
 
-  // Get user battle history
-  getBattleHistory: async (walletAddress: string) => {
-    const response = await api.get(`/users/${walletAddress}/history`);
+  // Get leaderboard
+  getLeaderboard: async (limit?: number, sortBy?: string) => {
+    const response = await api.get('/users/leaderboard', {
+      params: { limit, sortBy }
+    });
+    return response.data;
+  },
+
+  // Get active duels (requires authentication)
+  getActiveDuels: async () => {
+    const response = await api.get('/users/active-duels');
     return response.data;
   }
 };
 
 // Auth API functions
 export const authAPI = {
-  // Login with wallet signature
-  login: async (walletAddress: string, signature: string) => {
-    const response = await api.post('/auth/login', {
+  // Authenticate with wallet signature
+  authenticate: async (walletAddress: string, signature: string, message: string) => {
+    const response = await api.post('/auth/authenticate', {
       walletAddress,
-      signature
+      signature,
+      message
     });
     return response.data;
   },
 
-  // Logout
-  logout: async () => {
-    const response = await api.post('/auth/logout');
+  // Get user profile
+  getProfile: async () => {
+    const response = await api.get('/auth/profile');
     return response.data;
   },
 
-  // Verify token
-  verify: async (token: string) => {
-    const response = await api.post('/auth/verify', { token });
+  // Update user profile
+  updateProfile: async (profileData: any) => {
+    const response = await api.put('/auth/profile', profileData);
+    return response.data;
+  },
+
+  // Refresh token
+  refreshToken: async () => {
+    const response = await api.post('/auth/refresh');
     return response.data;
   }
 };

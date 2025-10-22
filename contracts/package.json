@@ -1,0 +1,28 @@
+{
+  "name": "abstract-battle-arena-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for Abstract Battle Arena",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:localhost": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:abstract": "hardhat run scripts/deploy.js --network abstract",
+    "verify": "hardhat verify"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.2",
+    "hardhat": "^2.19.0",
+    "@openzeppelin/contracts": "^5.0.0"
+  },
+  "keywords": [
+    "smart-contracts",
+    "solidity",
+    "hardhat",
+    "blockchain",
+    "pvp",
+    "gaming"
+  ],
+  "author": "Abstract Battle Arena Team",
+  "license": "MIT"
+}
